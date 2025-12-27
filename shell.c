@@ -4,7 +4,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < 20; i++) {
         printf("*");
     }
-    printf("Welcome to my shell")
+    printf("Welcome to my shell");
     for (int i = 0; i < 20; i++) {
         printf("*");
     }
@@ -15,10 +15,10 @@ int main(int argc, char* argv[]) {
 
         // If the process is the child process execute the command, else wait for the child process to end
         if(pid == 0) {
-            if(strcmp(args[0]), "exit" == 0) {
+            if(strcmp(argv[0]), "exit" == 0) {
                 exit(0);
             }
-            execvp(arg[0], argv);
+            execvp(argv[0], argv);
             perror("Running command failed");
             exit(1);
         } else {
