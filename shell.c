@@ -79,6 +79,7 @@ int main(int argc, char* argv[]) {
         } else {
             // If the process is the child process execute the command, else wait for the child process to end
             pid_t pid = fork();
+<<<<<<< HEAD
             int fd;
             // Handling input redirection
             if(args[2] && strcmp(args[1], "<") == 0) {
@@ -97,12 +98,18 @@ int main(int argc, char* argv[]) {
                 dup2(0, fd);
                 close(fd);
             }
+=======
+>>>>>>> 0714c49 (Finished implementation of cd command.)
             if(pid == 0) {
                 execvp(args[0], args);
                 perror("Running command failed");
                 exit(1);
             } else {
                 wait(NULL);
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0714c49 (Finished implementation of cd command.)
             }
         }
     }
