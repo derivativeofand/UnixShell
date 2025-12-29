@@ -1,5 +1,6 @@
 #include "shell.h"
 
+
 void parseInput(char* input, char** args) {
     char *token;
     int i = 0;
@@ -15,6 +16,7 @@ void parseInput(char* input, char** args) {
 
 int main(int argc, char* argv[]) {
     char buffer[MAX_LINE];
+    char cwd[PATH_MAX];
     char *args[MAX_ARGS];
 
     
@@ -30,35 +32,61 @@ int main(int argc, char* argv[]) {
     }
 
     while(1) {
-        printf("\nmyShell> ");
-
+        printf("\nmyShell: %s$ ", getcwd(cwd, sizeof(cwd)));
+        
         // If EOF or any other issues are encountered, exit the shell
         if(fgets(buffer, sizeof(buffer), stdin) == NULL) {
             printf("\n");
             break;
         }
-
+        
         parseInput(buffer, args);
-
+        
         // Empty command
         if(args[0] == NULL) {
             continue; 
         }
-
+        
+        // Exit command
         if(strcmp(args[0], "exit") == 0) {
             printf("Exiting shell...\n");
             exit(0);
-        }
-        pid_t pid = fork();
-        
-        // If the process is the child process execute the command, else wait for the child process to end
-        if(pid == 0) {
-            execvp(args[0], args);
-            perror("Running command failed");
-            exit(1);
-        } else {
-            wait(NULL);
+        } else if(strcmp(args[0], "cd") == 0) {
+    
+                // If the cd command is given without any arguments, change to home directory
+                if(args[1] == NULL) {
+    
+                    // Gets the absolute path of home directory
+                    char *home = getenv("HOME");
+    
+                    // If the HOME environment variable is not set, default to root directory
+                    if(home == NULL) {
+                        home = "/";
+                    }
+                    
+                    if(chdir(home) != 0) {
+                        perror("chdir failed");
+                    }
+    
+                } else {
+                    if(chdir(args[1]) != 0) {
+                        perror("chdir failed");
+                    } 
+                }
 
+        } else if(strcmp(args[0], "pwd") == 0) {
+            printf("%s\n", getcwd(cwd, sizeof(cwd)));
+        } else {
+            // If the process is the child process execute the command, else wait for the child process to end
+            pid_t pid = fork();
+            if(pid == 0) {
+                execvp(args[0], args);
+                perror("Running command failed");
+                exit(1);
+            } else {
+                wait(NULL);
+
+            }
         }
     }
     return 0;
