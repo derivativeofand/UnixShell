@@ -21,8 +21,9 @@ int main(int argc, char* argv[]) {
             execvp(arg[0], argv);
             perror("Running command failed");
             exit(1);
-        } else {
+	} else {
             wait(NULL);
         }
     }
 }
+
