@@ -79,13 +79,30 @@ int main(int argc, char* argv[]) {
         } else {
             // If the process is the child process execute the command, else wait for the child process to end
             pid_t pid = fork();
+            int fd;
+            // Handling input redirection
+            if(args[2] && strcmp(args[1], "<") == 0) {
+                // Removing the redirection part from args
+                printf("%s\n", args[2]);
+                args[1] = NULL; 
+
+                // Opening the file 
+                fd = open(args[2], O_RDONLY);
+                if(fd < 0) {
+                    perror("open failed");
+                    continue;
+                }
+                
+                // Replacing the stdin with the new file descriptor, fd
+                dup2(0, fd);
+                close(fd);
+            }
             if(pid == 0) {
                 execvp(args[0], args);
                 perror("Running command failed");
                 exit(1);
             } else {
                 wait(NULL);
-
             }
         }
     }
