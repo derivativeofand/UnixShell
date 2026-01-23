@@ -9,6 +9,10 @@ void parseInput(char* input, char** args) {
     while(token != NULL && i < MAX_ARGS - 1) {
         args[i++] = token;
         token = strtok(NULL, " \t\n");
+        if(token == '"') {
+            while()
+            token = strtok(input, '"');
+        }
     }
 
     args[i] = NULL;
@@ -30,9 +34,10 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < 20; i++) {
         printf("*");
     }
+    printf("\n");
 
     while(1) {
-        printf("\nmyShell: %s$ ", getcwd(cwd, sizeof(cwd)));
+        printf("myShell: %s$ ", getcwd(cwd, sizeof(cwd)));
         
         // If EOF or any other issues are encountered, exit the shell
         if(fgets(buffer, sizeof(buffer), stdin) == NULL) {
@@ -79,37 +84,49 @@ int main(int argc, char* argv[]) {
         } else {
             // If the process is the child process execute the command, else wait for the child process to end
             pid_t pid = fork();
-<<<<<<< HEAD
-            int fd;
-            // Handling input redirection
-            if(args[2] && strcmp(args[1], "<") == 0) {
-                // Removing the redirection part from args
-                printf("%s\n", args[2]);
-                args[1] = NULL; 
-
-                // Opening the file 
-                fd = open(args[2], O_RDONLY);
-                if(fd < 0) {
-                    perror("open failed");
-                    continue;
-                }
-                
-                // Replacing the stdin with the new file descriptor, fd
-                dup2(0, fd);
-                close(fd);
-            }
-=======
->>>>>>> 0714c49 (Finished implementation of cd command.)
             if(pid == 0) {
+                int fd;
+                // Handling input redirection
+                if(args[2] && strcmp(args[1], "<") == 0) {
+                    
+                    // Opening the file 
+                    fd = open(args[2], O_RDONLY);
+                    if(fd < 0) {
+                        perror("open failed");
+                        continue;
+                    }
+                    
+                    // Replacing the stdin with the new file descriptor, fd
+                    if(dup2(fd, 0) < 0) {
+                        perror("dup2 failed");
+                        continue;
+                    }
+                    close(fd);
+                    args[1] = NULL;
+                    args[2] = NULL;
+                } else if(args[2] && strcmp(args[1], ">") == 0) {
+                    fd = open(args[2], O_WRONLY | O_CREAT | O_EXCL | O_TRUNC);
+                    if(fd < 0) {
+                        perror("open failed");
+                        continue;
+                    }                    
+                    
+                    if(dup2(fd, 1) < 0) {
+                        perror("dup2 failed");
+                        continue;
+                    }
+                    close(fd);
+
+                    args[1] = NULL;
+                    args[2] = NULL;
+
+                }
                 execvp(args[0], args);
                 perror("Running command failed");
                 exit(1);
             } else {
                 wait(NULL);
-<<<<<<< HEAD
-=======
 
->>>>>>> 0714c49 (Finished implementation of cd command.)
             }
         }
     }
