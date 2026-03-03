@@ -2,16 +2,58 @@
 
 
 void parseInput(char* input, char** args) {
-    char *token;
+    int in_quotes = 0;      
+    char quote_char = 0;
     int i = 0;
+    char *p = input;
+    char *start = NULL;
 
-    token = strtok(input," \t\n");
-    while(token != NULL && i < MAX_ARGS - 1) {
-        args[i++] = token;
-        token = strtok(NULL, " \t\n");
-        if(token == '"') {
-            while()
-            token = strtok(input, '"');
+    while (*p) {
+        // Skip leading spaces/tabs/newlines
+        while (*p == ' ' || *p == '\t' || *p == '\n')
+            p++;
+
+        if (*p == '\0')
+            break;
+
+        start = p;
+
+        if (*p == '"' || *p == '\'') {
+            /* quoted token, either "..." or '...' */
+            quote_char = *p;
+            start = ++p;             
+            while (*p && *p != quote_char)
+                p++;
+
+            if (*p) {
+                *p = '\0';
+                p++;                     
+            }
+            args[i++] = start;
+        } else if (*p == '<' || *p == '>') {
+            /* redirection operator (<, > or >>) */
+            start = p;
+            p++;
+            if (*start == '>' && *p == '>')
+                p++;
+
+            if (*p) {
+                *p = '\0';
+                p++;
+            }
+            args[i++] = start;
+        } else {
+            // Unquoted token
+            start = p;
+            while (*p && *p != ' ' && *p != '\t' && *p != '\n' &&
+                   *p != '<' && *p != '>')
+                p++;
+
+            if (*p) {
+                *p = '\0';
+                p++;
+            }
+            args[i++] = start;
         }
     }
 
@@ -47,10 +89,25 @@ int main(int argc, char* argv[]) {
         
         parseInput(buffer, args);
         
+        // Print args components
+        for (int i = 0; args[i] != NULL; i++) {
+            printf("args[%d]: %s\n", i, args[i]);
+        }
+        
         // Empty command
         if(args[0] == NULL) {
             continue; 
         }
+        
+
+        int redirect_index = -1;
+        for (int i = 1; args[i] != NULL; i++) {
+            if(strcmp(args[i], "<") == 0 || strcmp(args[i], ">") == 0) {
+                redirect_index = i;
+                break;
+            }
+        }
+
         
         // Exit command
         if(strcmp(args[0], "exit") == 0) {
@@ -86,47 +143,44 @@ int main(int argc, char* argv[]) {
             pid_t pid = fork();
             if(pid == 0) {
                 int fd;
-                // Handling input redirection
-                if(args[2] && strcmp(args[1], "<") == 0) {
-                    
-                    // Opening the file 
-                    fd = open(args[2], O_RDONLY);
-                    if(fd < 0) {
-                        perror("open failed");
-                        continue;
-                    }
-                    
-                    // Replacing the stdin with the new file descriptor, fd
-                    if(dup2(fd, 0) < 0) {
-                        perror("dup2 failed");
-                        continue;
-                    }
-                    close(fd);
-                    args[1] = NULL;
-                    args[2] = NULL;
-                } else if(args[2] && strcmp(args[1], ">") == 0) {
-                    fd = open(args[2], O_WRONLY | O_CREAT | O_EXCL | O_TRUNC);
-                    if(fd < 0) {
-                        perror("open failed");
-                        continue;
-                    }                    
-                    
-                    if(dup2(fd, 1) < 0) {
-                        perror("dup2 failed");
-                        continue;
-                    }
-                    close(fd);
 
-                    args[1] = NULL;
-                    args[2] = NULL;
+                // Input/Ouput redirection handling
+                if (redirect_index != -1) {
+                    if (strcmp(args[redirect_index], "<") == 0 &&
+                        args[redirect_index + 1] != NULL) {
+                        fd = open(args[redirect_index + 1], O_RDONLY);
+                        if (fd < 0) {
+                            perror("open failed");
+                            exit(1);
+                        }
 
+                        if (dup2(fd, 0) < 0) {
+                            perror("dup2 failed");
+                            exit(1);
+                        }
+                        close(fd);
+                    } else if (strcmp(args[redirect_index], ">") == 0 && args[redirect_index + 1] != NULL) {
+                        fd = open(args[redirect_index + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                        if (fd < 0) {
+                            perror("open failed");
+                            exit(1);
+                        }
+
+                        if (dup2(fd, 1) < 0) {
+                            perror("dup2 failed");
+                            exit(1);
+                        }
+                        close(fd);
+                    }
+                    /* remove the operator and file from args so execvp sees only the real args */
+                    args[redirect_index] = NULL;
                 }
+
                 execvp(args[0], args);
                 perror("Running command failed");
                 exit(1);
             } else {
                 wait(NULL);
-
             }
         }
     }
