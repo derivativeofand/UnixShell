@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
 
         int redirect_index = -1;
         for (int i = 1; args[i] != NULL; i++) {
-            if(strcmp(args[i], "<") == 0 || strcmp(args[i], ">") == 0) {
+            if(strcmp(args[i], "<") == 0 || strcmp(args[i], ">") == 0 || strcmp(args[i], ">>") == 0) {
                 redirect_index = i;
                 break;
             }
@@ -143,10 +143,17 @@ int main(int argc, char* argv[]) {
             pid_t pid = fork();
             if(pid == 0) {
                 int fd;
+                char *redirect_op = NULL;
+
+                // Save the redirection operator before truncating args
+                if (redirect_index != -1) {
+                    redirect_op = args[redirect_index];
+                    args[redirect_index] = NULL;
+                }
 
                 // Input/Ouput redirection handling
                 if (redirect_index != -1) {
-                    if (strcmp(args[redirect_index], "<") == 0 &&
+                    if(strcmp(redirect_op, "<") == 0 &&
                         args[redirect_index + 1] != NULL) {
                         fd = open(args[redirect_index + 1], O_RDONLY);
                         if (fd < 0) {
@@ -159,7 +166,7 @@ int main(int argc, char* argv[]) {
                             exit(1);
                         }
                         close(fd);
-                    } else if (strcmp(args[redirect_index], ">") == 0 && args[redirect_index + 1] != NULL) {
+                    } else if(strcmp(redirect_op, ">") == 0 && args[redirect_index + 1] != NULL) {
                         fd = open(args[redirect_index + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
                         if (fd < 0) {
                             perror("open failed");
@@ -171,9 +178,19 @@ int main(int argc, char* argv[]) {
                             exit(1);
                         }
                         close(fd);
-                    }
-                    /* remove the operator and file from args so execvp sees only the real args */
-                    args[redirect_index] = NULL;
+                    } else if(strcmp(redirect_op, ">>") == 0 && args[redirect_index + 1] != NULL) {
+                        fd = open(args[redirect_index + 1], O_WRONLY | O_CREAT | O_APPEND, 0644);
+                        if (fd < 0) {
+                            perror("open failed");
+                            exit(1);
+                        }
+
+                        if (dup2(fd, 1) < 0) {
+                            perror("dup2 failed");
+                            exit(1);
+                        }
+                        close(fd);
+                    } 
                 }
 
                 execvp(args[0], args);
